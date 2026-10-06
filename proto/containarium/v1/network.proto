@@ -516,6 +516,28 @@ message ListACLPresetsResponse {
   repeated ACLPresetInfo presets = 1;
 }
 
+// CoreGuardEntry represents a single container's network guard state
+message CoreGuardEntry {
+  string container = 1;
+  string role = 2;
+  string ip = 3;
+  string acl_name = 4;
+  bool attached = 5;
+  bool rules_applied = 6;
+  string last_error = 7;
+}
+
+// CoreGuardStatus represents the overall core-infra network guard state
+message CoreGuardStatus {
+  string mode = 1;
+  string firewall_driver = 2;
+  repeated CoreGuardEntry entries = 3;
+  string stale_since = 4;
+}
+
+// GetCoreGuardStatusRequest requests the core-guard status snapshot
+message GetCoreGuardStatusRequest {}
+
 // NetworkService provides network and firewall management
 service NetworkService {
   // GetRoutes lists all proxy routes (DNS to container mappings)
@@ -704,6 +726,18 @@ service NetworkService {
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Stop egress-via-client proxy";
       description: "Tears down the source-restricted egress relay for the named box.";
+      tags: "Network";
+    };
+  }
+
+  // GetCoreGuardStatus gets the read-only snapshot of the core-infra network guard reconciler state
+  rpc GetCoreGuardStatus(GetCoreGuardStatusRequest) returns (CoreGuardStatus) {
+    option (google.api.http) = {
+      get: "/v1/core-guard"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Get CoreGuard status";
+      description: "Returns the latest snapshot of the core-infra network guard state.";
       tags: "Network";
     };
   }

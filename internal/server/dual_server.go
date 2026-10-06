@@ -1924,6 +1924,10 @@ skipAppHosting:
 		})
 	}
 
+	if networkServer != nil && coreGuard != nil {
+		networkServer.coreGuard = coreGuard
+	}
+
 	// AnonymousBoxService (#2197): the daemon side of the `ssh new.<domain>`
 	// door. Opt-in — only the dedicated pool=anon backend runs it — and only
 	// over an LXC box backend: the manager needs exec + TTL capabilities and

@@ -3792,6 +3792,30 @@
         ]
       }
     },
+    "/v1/core-guard": {
+      "get": {
+        "summary": "Get CoreGuard status",
+        "description": "Returns the latest snapshot of the core-infra network guard state.",
+        "operationId": "NetworkService_GetCoreGuardStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/CoreGuardStatus"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpc.Status"
+            }
+          }
+        },
+        "tags": [
+          "Network"
+        ]
+      }
+    },
     "/v1/crew-runs/{id}": {
       "get": {
         "summary": "Get crew run",
@@ -10754,6 +10778,55 @@
       "default": "CONTAINER_STATE_UNSPECIFIED",
       "description": "- CONTAINER_STATE_UNSPECIFIED: Unspecified state (should not be used)\n - CONTAINER_STATE_RUNNING: Container is running\n - CONTAINER_STATE_STOPPED: Container is stopped\n - CONTAINER_STATE_FROZEN: Container is frozen (paused)\n - CONTAINER_STATE_CREATING: Container is being created\n - CONTAINER_STATE_ERROR: Container creation failed or is in error state\n - CONTAINER_STATE_PROVISIONING: Container is running but provisioning (installing stack/packages)",
       "title": "ContainerState represents the current state of a container"
+    },
+    "CoreGuardEntry": {
+      "type": "object",
+      "properties": {
+        "container": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "ip": {
+          "type": "string"
+        },
+        "aclName": {
+          "type": "string"
+        },
+        "attached": {
+          "type": "boolean"
+        },
+        "rulesApplied": {
+          "type": "boolean"
+        },
+        "lastError": {
+          "type": "string"
+        }
+      },
+      "title": "CoreGuardEntry represents a single container's network guard state"
+    },
+    "CoreGuardStatus": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "firewallDriver": {
+          "type": "string"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/CoreGuardEntry"
+          }
+        },
+        "staleSince": {
+          "type": "string"
+        }
+      },
+      "title": "CoreGuardStatus represents the overall core-infra network guard state"
     },
     "CreateAlertRuleRequest": {
       "type": "object",

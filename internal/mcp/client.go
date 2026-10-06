@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	platformclient "github.com/footprintai/containarium/internal/client"
 	"github.com/footprintai/containarium/internal/runlog"
 	pb "github.com/footprintai/containarium/pkg/pb/containarium/v1"
 	"github.com/footprintai/containarium/pkg/version"
@@ -2332,4 +2334,18 @@ type SystemInfo struct {
 	CoreCommittedCpuCores float64 `json:"coreCommittedCpuCores"`
 	CpuAdmissionMode      string  `json:"cpuAdmissionMode,omitempty"`
 	CpuOvercommitFactor   float64 `json:"cpuOvercommitFactor"`
+}
+
+// GetCoreGuardStatus shares the CLI's typed client operation.
+func (c *Client) GetCoreGuardStatus() (*pb.CoreGuardStatus, error) {
+	if c.tlsConfigErr != nil {
+		return nil, c.tlsConfigErr
+	}
+	token, err := c.readToken()
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return platformclient.FetchCoreGuardStatus(ctx, c.httpClient, c.baseURL, token)
 }

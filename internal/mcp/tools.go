@@ -17,6 +17,7 @@ import (
 	"github.com/footprintai/containarium/pkg/core/expose"
 	"github.com/footprintai/containarium/pkg/core/ostype"
 	pb "github.com/footprintai/containarium/pkg/pb/containarium/v1"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // ephemeralKeyDir returns the directory the MCP server writes ephemeral
@@ -109,6 +110,12 @@ type ToolHandler func(client API, args map[string]interface{}) (string, error)
 // registerTools registers all available MCP tools
 func (s *Server) registerTools() {
 	s.tools = []Tool{
+		{
+			Name:        "core_guard_status",
+			Description: "Read the latest core infrastructure network guard status snapshot",
+			InputSchema: map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
+			Handler:     handleCoreGuardStatus,
+		},
 		{
 			Name: "create_container",
 			Description: "Create a new LXC container under a username. Returns the container's " +
@@ -1795,6 +1802,7 @@ func (s *Server) registerTools() {
 // completeness against the registered tool list.
 func toolScopeAssignments() map[string]string {
 	return map[string]string{
+		"core_guard_status": auth.ScopeNetworkPolicyRead,
 		// coding runs on a box (#1698). code:write is the scope the CLI's
 		// own `code` surface is gated by — starting or stopping an agent
 		// run executes arbitrary code on the box, so it is deliberately NOT
@@ -3397,4 +3405,13 @@ func getIntArg(args map[string]interface{}, key string) (int, bool) {
 	default:
 		return 0, false
 	}
+}
+
+func handleCoreGuardStatus(client API, _ map[string]interface{}) (string, error) {
+	status, err := client.GetCoreGuardStatus()
+	if err != nil {
+		return "", err
+	}
+	data, err := (protojson.MarshalOptions{EmitUnpopulated: true}).Marshal(status)
+	return string(data), err
 }

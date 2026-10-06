@@ -8,9 +8,11 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/footprintai/containarium/internal/app"
 	"github.com/footprintai/containarium/internal/auth"
+	"github.com/footprintai/containarium/internal/coreguard"
 	"github.com/footprintai/containarium/internal/egressproxy"
 	"github.com/footprintai/containarium/internal/events"
 	"github.com/footprintai/containarium/internal/safecast"
@@ -24,6 +26,7 @@ import (
 // NetworkServer implements the NetworkService gRPC service
 type NetworkServer struct {
 	pb.UnimplementedNetworkServiceServer
+	coreGuard          interface{ Status() coreguard.Status }
 	incusClient        *incus.Client
 	proxyManager       *app.ProxyManager
 	passthroughManager *network.PassthroughManager
@@ -1340,4 +1343,23 @@ func (s *NetworkServer) containerNameForIP(containerName, targetIP string) strin
 		}
 	}
 	return ""
+}
+
+// GetCoreGuardStatus reads the reconciler snapshot without touching Incus.
+func (s *NetworkServer) GetCoreGuardStatus(ctx context.Context, _ *pb.GetCoreGuardStatusRequest) (*pb.CoreGuardStatus, error) {
+	if err := auth.RequireRoleOrScope(ctx, auth.RoleAdmin, auth.ScopeNetworkPolicyRead); err != nil {
+		return nil, err
+	}
+	snapshot := coreguard.Status{Mode: coreguard.ModeOff}
+	if s.coreGuard != nil {
+		snapshot = s.coreGuard.Status()
+	}
+	out := &pb.CoreGuardStatus{Mode: string(snapshot.Mode), FirewallDriver: snapshot.FirewallDriver}
+	if !snapshot.StaleSince.IsZero() {
+		out.StaleSince = snapshot.StaleSince.UTC().Format(time.RFC3339Nano)
+	}
+	for _, entry := range snapshot.Entries {
+		out.Entries = append(out.Entries, &pb.CoreGuardEntry{Container: entry.Container, Role: string(entry.Role), Ip: entry.IP, AclName: entry.ACLName, Attached: entry.Attached, RulesApplied: entry.RulesApplied > 0, LastError: entry.LastError})
+	}
+	return out, nil
 }

@@ -34,6 +34,7 @@ const (
 	NetworkService_ListACLPresets_FullMethodName         = "/containarium.v1.NetworkService/ListACLPresets"
 	NetworkService_StartEgressProxy_FullMethodName       = "/containarium.v1.NetworkService/StartEgressProxy"
 	NetworkService_StopEgressProxy_FullMethodName        = "/containarium.v1.NetworkService/StopEgressProxy"
+	NetworkService_GetCoreGuardStatus_FullMethodName     = "/containarium.v1.NetworkService/GetCoreGuardStatus"
 )
 
 // NetworkServiceClient is the client API for NetworkService service.
@@ -76,6 +77,8 @@ type NetworkServiceClient interface {
 	StartEgressProxy(ctx context.Context, in *StartEgressProxyRequest, opts ...grpc.CallOption) (*StartEgressProxyResponse, error)
 	// StopEgressProxy stops the egress-via-client relay for a box.
 	StopEgressProxy(ctx context.Context, in *StopEgressProxyRequest, opts ...grpc.CallOption) (*StopEgressProxyResponse, error)
+	// GetCoreGuardStatus gets the read-only snapshot of the core-infra network guard reconciler state
+	GetCoreGuardStatus(ctx context.Context, in *GetCoreGuardStatusRequest, opts ...grpc.CallOption) (*CoreGuardStatus, error)
 }
 
 type networkServiceClient struct {
@@ -236,6 +239,16 @@ func (c *networkServiceClient) StopEgressProxy(ctx context.Context, in *StopEgre
 	return out, nil
 }
 
+func (c *networkServiceClient) GetCoreGuardStatus(ctx context.Context, in *GetCoreGuardStatusRequest, opts ...grpc.CallOption) (*CoreGuardStatus, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CoreGuardStatus)
+	err := c.cc.Invoke(ctx, NetworkService_GetCoreGuardStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NetworkServiceServer is the server API for NetworkService service.
 // All implementations must embed UnimplementedNetworkServiceServer
 // for forward compatibility.
@@ -276,6 +289,8 @@ type NetworkServiceServer interface {
 	StartEgressProxy(context.Context, *StartEgressProxyRequest) (*StartEgressProxyResponse, error)
 	// StopEgressProxy stops the egress-via-client relay for a box.
 	StopEgressProxy(context.Context, *StopEgressProxyRequest) (*StopEgressProxyResponse, error)
+	// GetCoreGuardStatus gets the read-only snapshot of the core-infra network guard reconciler state
+	GetCoreGuardStatus(context.Context, *GetCoreGuardStatusRequest) (*CoreGuardStatus, error)
 	mustEmbedUnimplementedNetworkServiceServer()
 }
 
@@ -330,6 +345,9 @@ func (UnimplementedNetworkServiceServer) StartEgressProxy(context.Context, *Star
 }
 func (UnimplementedNetworkServiceServer) StopEgressProxy(context.Context, *StopEgressProxyRequest) (*StopEgressProxyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method StopEgressProxy not implemented")
+}
+func (UnimplementedNetworkServiceServer) GetCoreGuardStatus(context.Context, *GetCoreGuardStatusRequest) (*CoreGuardStatus, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCoreGuardStatus not implemented")
 }
 func (UnimplementedNetworkServiceServer) mustEmbedUnimplementedNetworkServiceServer() {}
 func (UnimplementedNetworkServiceServer) testEmbeddedByValue()                        {}
@@ -622,6 +640,24 @@ func _NetworkService_StopEgressProxy_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NetworkService_GetCoreGuardStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCoreGuardStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NetworkServiceServer).GetCoreGuardStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NetworkService_GetCoreGuardStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NetworkServiceServer).GetCoreGuardStatus(ctx, req.(*GetCoreGuardStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NetworkService_ServiceDesc is the grpc.ServiceDesc for NetworkService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -688,6 +724,10 @@ var NetworkService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StopEgressProxy",
 			Handler:    _NetworkService_StopEgressProxy_Handler,
+		},
+		{
+			MethodName: "GetCoreGuardStatus",
+			Handler:    _NetworkService_GetCoreGuardStatus_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

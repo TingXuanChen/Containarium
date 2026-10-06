@@ -26,6 +26,7 @@ import (
 // The method set is exactly *Client's exported surface; the compile-time
 // assertions below pin both implementations to it.
 type API interface {
+	GetCoreGuardStatus() (*pb.CoreGuardStatus, error)
 	// Containers + lifecycle.
 	CreateContainer(req CreateContainerRequest) (*CreateContainerResponse, error)
 	ListContainers() (*ListContainersResponse, error)
@@ -180,6 +181,10 @@ func errUnsupportedOnCloud(op, alt string) error {
 		msg += "; " + alt
 	}
 	return errors.New(msg)
+}
+
+func (cloudClient) GetCoreGuardStatus() (*pb.CoreGuardStatus, error) {
+	return nil, errUnsupportedOnCloud("core_guard_status", "")
 }
 
 func (cloudClient) GetSystemInfo() (*GetSystemInfoResponse, error) {
