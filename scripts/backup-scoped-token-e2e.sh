@@ -12,8 +12,34 @@ tenant="verifylane$$"
 source_name="$tenant-container"
 scratch_dir=$(mktemp -d)
 cleanup() {
+  status=$?
+  if [ "$status" -ne 0 ]; then
+    echo "Backup scoped-token e2e failed (exit $status); captured API responses:" >&2
+    diagnostics_dir=${CONTAINARIUM_BACKUP_E2E_DIAGNOSTICS_DIR:-}
+    if [ -n "$diagnostics_dir" ]; then
+      if ! mkdir -p "$diagnostics_dir" || ! chmod 700 "$diagnostics_dir"; then
+        echo "Could not prepare diagnostics directory: $diagnostics_dir" >&2
+        diagnostics_dir=""
+      fi
+    fi
+    # Whitelist response files; never publish jwt.secret or bearer tokens.
+    for response in create.json list.json verify.json denied.json; do
+      if [ -f "$scratch_dir/$response" ]; then
+        printf '\n--- %s ---\n' "$response" >&2
+        if [ -s "$scratch_dir/$response" ]; then
+          cat "$scratch_dir/$response" >&2 || true
+        else
+          echo '(empty response body)' >&2
+        fi
+        if [ -n "$diagnostics_dir" ]; then
+          cp "$scratch_dir/$response" "$diagnostics_dir/$response" || true
+        fi
+      fi
+    done
+  fi
   incus delete "$source_name" --force >/dev/null 2>&1 || true
-  rm -rf "$scratch_dir"
+  rm -rf "$scratch_dir" || true
+  exit "$status"
 }
 trap cleanup EXIT
 printf '%s' "$JWT_SECRET" > "$scratch_dir/jwt.secret"
