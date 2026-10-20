@@ -401,6 +401,7 @@ jobs:
           sudo pkill -f "containarium daemon" || true
 
       - name: Backup verifier scoped token against the real daemon
+        id: backup_scoped_token
         env:
           JWT_SECRET: backup-verifier-lane-only-secret-not-a-credential
         run: |
@@ -443,9 +444,31 @@ jobs:
             exit 1
           fi
           sudo env "PATH=$PATH" JWT_SECRET="$JWT_SECRET" ADMIN_TOKEN="$ADMIN_TOKEN" \
+            CONTAINARIUM_BACKUP_E2E_DIAGNOSTICS_DIR="$RUNNER_TEMP/backup-scoped-token-diagnostics" \
             CONTAINARIUM_LANE_IMAGE=lane-box bash scripts/backup-scoped-token-e2e.sh || {
               cat /tmp/backup-scoped-daemon.log; exit 1;
             }
+
+      - name: Preserve backup verifier diagnostics
+        if: ${{ failure() && steps.backup_scoped_token.outcome == 'failure' }}
+        run: |
+          diagnostics_dir="$RUNNER_TEMP/backup-scoped-token-diagnostics"
+          sudo mkdir -p "$diagnostics_dir"
+          if [ -f /tmp/backup-scoped-daemon.log ]; then
+            sudo cp /tmp/backup-scoped-daemon.log "$diagnostics_dir/daemon.log"
+          fi
+          # The e2e runs under sudo; let the artifact action read its files.
+          sudo chown -R "$(id -u):$(id -g)" "$diagnostics_dir"
+          chmod -R u+rwX,go-rwx "$diagnostics_dir"
+
+      - name: Upload backup verifier diagnostics
+        if: ${{ failure() && steps.backup_scoped_token.outcome == 'failure' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: backup-scoped-token-diagnostics
+          path: ${{ runner.temp }}/backup-scoped-token-diagnostics/
+          retention-days: 7
+          if-no-files-found: warn
 
       # A skip here means the environment check above passed and the test
       # decided otherwise — a contradiction worth failing on rather than
